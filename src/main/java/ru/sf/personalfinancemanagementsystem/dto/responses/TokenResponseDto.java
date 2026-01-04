@@ -1,9 +1,9 @@
-package ru.sf.personalfinancemanagementsystem.responses;
+package ru.sf.personalfinancemanagementsystem.dto.responses;
 
 import java.time.Instant;
 
 
-public record TokenResponse(
+public record TokenResponseDto(
 
         String token,
         Instant expiresAt

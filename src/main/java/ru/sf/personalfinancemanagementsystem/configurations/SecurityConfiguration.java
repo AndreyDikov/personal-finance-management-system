@@ -1,7 +1,6 @@
 package ru.sf.personalfinancemanagementsystem.configurations;
 
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
@@ -25,7 +24,7 @@ import java.nio.charset.StandardCharsets;
 
 
 @Configuration
-public class SecurityConfig {
+public class SecurityConfiguration {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -67,7 +66,8 @@ public class SecurityConfig {
                         .requestMatchers(
                                 Endpoints.REGISTER,
                                 Endpoints.GET_TOKEN,
-                                Endpoints.OPEN_API
+                                Endpoints.OPEN_API_HTML,
+                                Endpoints.OPEN_API_ALL
                         )
                         .permitAll()
                         .anyRequest().authenticated()

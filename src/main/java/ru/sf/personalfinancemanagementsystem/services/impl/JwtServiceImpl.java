@@ -1,47 +1,50 @@
-package ru.sf.personalfinancemanagementsystem.services;
+package ru.sf.personalfinancemanagementsystem.services.impl;
 
-import org.springframework.beans.factory.annotation.Value;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.stereotype.Service;
+import ru.sf.personalfinancemanagementsystem.domains.UserDataForToken;
+import ru.sf.personalfinancemanagementsystem.domains.Token;
+import ru.sf.personalfinancemanagementsystem.services.JwtService;
+import ru.sf.personalfinancemanagementsystem.services.YamlService;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.UUID;
+
 
 @Service
-public class JwtService {
+@RequiredArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+public class JwtServiceImpl implements JwtService {
 
-    private final JwtEncoder jwtEncoder;
-    private final String issuer;
-    private final long ttlSeconds;
+    JwtEncoder jwtEncoder;
+    YamlService yamlServiceImpl;
 
-    public JwtService(
-            JwtEncoder jwtEncoder,
-            @Value("${security.jwt.issuer}") String issuer,
-            @Value("${security.jwt.ttl-seconds}") long ttlSeconds
-    ) {
-        this.jwtEncoder = jwtEncoder;
-        this.issuer = issuer;
-        this.ttlSeconds = ttlSeconds;
-    }
 
-    public Token issue(UUID userId, String login) {
+    @Override
+    public Token issue(@NotNull UserDataForToken userDataForToken) {
         Instant now = Instant.now();
-        Instant exp = now.plus(ttlSeconds, ChronoUnit.SECONDS);
+        Instant exp = now.plus(yamlServiceImpl.getTtlSeconds(), ChronoUnit.SECONDS);
 
         JwtClaimsSet claims = JwtClaimsSet.builder()
-                .issuer(issuer)
+                .issuer(yamlServiceImpl.getIssuer())
                 .issuedAt(now)
                 .expiresAt(exp)
-                .subject(userId.toString())
-                .claim("login", login)
+                .subject(userDataForToken.getId().toString())
+                .claim("login", userDataForToken.getLogin())
                 .build();
 
         String token = jwtEncoder.encode(JwtEncoderParameters.from(claims)).getTokenValue();
-        return new Token(token, exp);
+
+        return Token.builder()
+                .value(token)
+                .expiresAt(exp)
+                .build();
     }
 
-    public record Token(String value, Instant expiresAt) {}
 }

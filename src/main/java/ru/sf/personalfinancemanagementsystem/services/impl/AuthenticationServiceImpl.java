@@ -1,61 +1,71 @@
-package ru.sf.personalfinancemanagementsystem.services;
+package ru.sf.personalfinancemanagementsystem.services.impl;
 
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.sf.personalfinancemanagementsystem.dto.requests.CredentialsRequestDto;
+import ru.sf.personalfinancemanagementsystem.domains.*;
 import ru.sf.personalfinancemanagementsystem.entities.UserEntity;
+import ru.sf.personalfinancemanagementsystem.exceptions.BadLoginOrPasswordException;
+import ru.sf.personalfinancemanagementsystem.exceptions.UserAlreadyExistsException;
+import ru.sf.personalfinancemanagementsystem.mappers.UserMapper;
 import ru.sf.personalfinancemanagementsystem.repositories.UserRepository;
+import ru.sf.personalfinancemanagementsystem.services.AuthenticationService;
+import ru.sf.personalfinancemanagementsystem.services.JwtService;
+
 
 @Service
-public class AuthService {
+@RequiredArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+public class AuthenticationServiceImpl implements AuthenticationService {
 
-    private final UserRepository userRepo;
-    private final PasswordEncoder passwordEncoder;
-    private final JwtService jwtService;
+    UserRepository userRepository;
 
-    public AuthService(UserRepository userRepo, PasswordEncoder passwordEncoder, JwtService jwtService) {
-        this.userRepo = userRepo;
-        this.passwordEncoder = passwordEncoder;
-        this.jwtService = jwtService;
+    PasswordEncoder passwordEncoder;
+    JwtService jwtService;
+
+
+    @Override
+    @Transactional
+    public UserDataForRegister register(@NotNull Credentials credentials) {
+        try {
+            UserEntity user = UserEntity.builder()
+                    .login(credentials.getLogin())
+                    .passwordHash(passwordEncoder.encode(credentials.getPassword()))
+                    .build();
+
+            UserEntity savedUser = userRepository.save(user);
+
+            return UserDataForRegister.builder()
+                    .id(savedUser.getId())
+                    .login(savedUser.getLogin())
+                    .build();
+        } catch (DataIntegrityViolationException e) {
+            throw new UserAlreadyExistsException(credentials.getLogin());
+        }
     }
 
-    @Transactional
-    public UserEntity register(CredentialsRequestDto req) {
-        if (userRepo.existsByLogin(req.login())) {
-            throw new UserAlreadyExistsException(req.login());
+
+    @Override
+    @Transactional(readOnly = true)
+    public Token issueToken(@NotNull Credentials credentials) {
+        User user = userRepository.findByLogin(credentials.getLogin())
+                .orElseThrow(BadLoginOrPasswordException::new);
+
+        if (!passwordEncoder.matches(credentials.getPassword(), user.getPasswordHash())) {
+            throw new BadLoginOrPasswordException();
         }
 
-        UserEntity user = UserEntity.builder()
-                .login(req.login())
-                .passwordHash(passwordEncoder.encode(req.password()))
+        UserDataForToken userDataForToken = UserDataForToken.builder()
+                .id(user.getId())
+                .login(user.getLogin())
                 .build();
 
-        try {
-            return userRepo.save(user); // UUID будет сгенерен Hibernate’ом
-        } catch (DataIntegrityViolationException e) {
-            // на случай гонки/параллельной регистрации
-            throw new UserAlreadyExistsException(req.login());
-        }
+        return jwtService.issue(userDataForToken);
     }
 
-    @Transactional(readOnly = true)
-    public JwtService.Token issueToken(CredentialsRequestDto req) {
-        UserEntity user = userRepo.findByLogin(req.login())
-                .orElseThrow(() -> new BadCredentialsException("Bad credentials"));
-
-        if (!passwordEncoder.matches(req.password(), user.getPasswordHash())) {
-            throw new BadCredentialsException("Bad credentials");
-        }
-
-        return jwtService.issue(user.getId(), user.getLogin());
-    }
-
-    public static class UserAlreadyExistsException extends RuntimeException {
-        public UserAlreadyExistsException(String login) {
-            super("Login already exists: " + login);
-        }
-    }
 }

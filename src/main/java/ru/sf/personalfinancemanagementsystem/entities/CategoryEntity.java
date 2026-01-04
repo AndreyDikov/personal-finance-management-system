@@ -1,4 +1,4 @@
-package ru.sf.personalfinancemanagementsystem.entities.tabels;
+package ru.sf.personalfinancemanagementsystem.entities;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -20,7 +20,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @Table(name = "categories")
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class CategoryTable {
+public class CategoryEntity {
 
     @Id
     @UuidGenerator

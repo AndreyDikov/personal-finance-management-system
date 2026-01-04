@@ -1,4 +1,11 @@
 package ru.sf.personalfinancemanagementsystem.services;
 
-public interface JwtServiceImpl {
+import ru.sf.personalfinancemanagementsystem.domains.UserDataForToken;
+import ru.sf.personalfinancemanagementsystem.domains.Token;
+
+
+public interface JwtService {
+
+    Token issue(UserDataForToken userDataForToken);
+
 }

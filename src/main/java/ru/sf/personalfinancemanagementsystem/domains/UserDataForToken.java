@@ -13,7 +13,7 @@ import java.util.UUID;
 @Setter
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class UserDataToToken {
+public class UserDataForToken {
 
     UUID id;
     String login;

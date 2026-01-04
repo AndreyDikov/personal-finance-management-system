@@ -1,5 +1,7 @@
 package ru.sf.personalfinancemanagementsystem;
 
+import lombok.Builder;
+import lombok.Data;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 

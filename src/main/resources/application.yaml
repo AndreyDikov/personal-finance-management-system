@@ -1,1 +1,50 @@
-spring.application.name=personal-finance-management-system
+server:
+  port: 8080
+
+
+springdoc:
+  swagger-ui:
+    url: /openapi.yaml
+    disable-swagger-default-url: true
+
+
+spring:
+  application:
+    name: personal-finance-management-system
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/personal_finance_management_system
+    username: postgres
+    password: 2906
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        highlight_sql: true
+        use_sql_comments: true
+    open-in-view: false
+
+  liquibase:
+    enabled: true
+    change-log: classpath:/db/changelog/db.changelog-master.yaml
+
+  security:
+    jwt:
+      secret: #todo встаить сгенерированный секрет
+      ttl-seconds: 3600
+      issuer: "pfms"
+
+
+logging:
+  level:
+    org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE
+    org.hibernate.type.descriptor.sql: TRACE
+
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n"

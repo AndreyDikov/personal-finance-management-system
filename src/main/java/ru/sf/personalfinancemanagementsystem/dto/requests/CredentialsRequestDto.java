@@ -1,14 +1,17 @@
-package ru.sf.personalfinancemanagementsystem.requests;
+package ru.sf.personalfinancemanagementsystem.dto.requests;
 
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 
-public record CredentialsRequest(
+public record CredentialsRequestDto(
 
-        @Size(min = 1, max = 128)
+        @NotBlank
+        @Size(max = 128)
         String login,
 
-        @Size(min = 4, max = 72)
+        @NotBlank
+        @Size(min = 8, max = 72)
         String password
 
 ) {}

@@ -1,4 +1,4 @@
-package ru.sf.personalfinancemanagementsystem.entities.tabels;
+package ru.sf.personalfinancemanagementsystem.entities;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -16,7 +16,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @Table(name = "users")
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class UserTable {
+public class UserEntity {
 
     @Id
     @UuidGenerator

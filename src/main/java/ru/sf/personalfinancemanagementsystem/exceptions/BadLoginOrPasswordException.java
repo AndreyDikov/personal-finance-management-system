@@ -1,7 +1,12 @@
 package ru.sf.personalfinancemanagementsystem.exceptions;
 
-public class BadPasswordException extends RuntimeException {
-  public BadPasswordException(String message) {
-    super(message);
-  }
+import org.springframework.security.authentication.BadCredentialsException;
+
+
+public class BadLoginOrPasswordException extends BadCredentialsException {
+
+    public BadLoginOrPasswordException() {
+        super("Неправильный логин или пароль");
+    }
+
 }
