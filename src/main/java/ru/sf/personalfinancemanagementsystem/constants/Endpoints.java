@@ -8,12 +8,14 @@ public class Endpoints {
 
     public static final String BASE = "/pfms";
 
+    public static final String ERROR = "/error";
+
     public static final String AUTHENTICATION = BASE + "/authentication";
     public static final String REGISTER = AUTHENTICATION + "/register";
     public static final String GET_TOKEN = AUTHENTICATION + "/get-token";
 
-    public static final String OPEN_API = "/swagger-ui";
-    public static final String OPEN_API_HTML = OPEN_API + ".html";
-    public static final String OPEN_API_ALL = OPEN_API + "/**";
+    public static final String SWAGGER_UI = "/swagger-ui";
+    public static final String SWAGGER_UI_HTML = SWAGGER_UI + ".html";
+    public static final String SWAGGER_UI_ALL = SWAGGER_UI + "/**";
 
 }

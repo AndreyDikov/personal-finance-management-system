@@ -35,9 +35,14 @@ spring:
 
   security:
     jwt:
-      secret: #todo встаить сгенерированный секрет
+      secret:
       ttl-seconds: 3600
       issuer: "pfms"
+      algorithm-name: "HmacSHA256"
+      min-byte-size: 32
+
+  jackson:
+    property-naming-strategy: SNAKE_CASE
 
 
 logging:

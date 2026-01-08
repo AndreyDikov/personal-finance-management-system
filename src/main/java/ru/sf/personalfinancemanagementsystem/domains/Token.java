@@ -12,7 +12,7 @@ import java.time.Instant;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class Token {
 
-    String value;
+    String token;
     Instant expiresAt;
 
 }

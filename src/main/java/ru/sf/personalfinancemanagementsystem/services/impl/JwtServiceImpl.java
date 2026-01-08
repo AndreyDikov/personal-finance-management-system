@@ -4,6 +4,8 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.jetbrains.annotations.NotNull;
+import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.JwsHeader;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
@@ -22,27 +24,31 @@ import java.time.temporal.ChronoUnit;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class JwtServiceImpl implements JwtService {
 
+    YamlService yamlService;
+
     JwtEncoder jwtEncoder;
-    YamlService yamlServiceImpl;
 
 
     @Override
     public Token issue(@NotNull UserDataForToken userDataForToken) {
         Instant now = Instant.now();
-        Instant exp = now.plus(yamlServiceImpl.getTtlSeconds(), ChronoUnit.SECONDS);
+        Instant exp = now.plus(yamlService.getTtlSeconds(), ChronoUnit.SECONDS);
 
         JwtClaimsSet claims = JwtClaimsSet.builder()
-                .issuer(yamlServiceImpl.getIssuer())
+                .issuer(yamlService.getIssuer())
                 .issuedAt(now)
                 .expiresAt(exp)
                 .subject(userDataForToken.getId().toString())
                 .claim("login", userDataForToken.getLogin())
                 .build();
 
-        String token = jwtEncoder.encode(JwtEncoderParameters.from(claims)).getTokenValue();
+        JwsHeader header = JwsHeader.with(MacAlgorithm.HS256).build();
+        String token = jwtEncoder
+                .encode(JwtEncoderParameters.from(header, claims))
+                .getTokenValue();
 
         return Token.builder()
-                .value(token)
+                .token(token)
                 .expiresAt(exp)
                 .build();
     }

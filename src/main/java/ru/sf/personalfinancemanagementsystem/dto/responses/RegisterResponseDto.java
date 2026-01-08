@@ -5,7 +5,7 @@ import java.util.UUID;
 
 public record RegisterResponseDto(
 
-        UUID userId,
+        UUID id,
         String login
 
 ) {}

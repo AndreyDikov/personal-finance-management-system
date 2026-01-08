@@ -32,15 +32,21 @@ public class AuthenticationController {
 
 
     @PostMapping(Endpoints.REGISTER)
-    public ResponseEntity<RegisterResponseDto> register(@RequestBody @Valid CredentialsRequestDto request) {
-        UserDataForRegister userData = authenticationService.register(credentialsMapper.toDomain(request));
+    public ResponseEntity<RegisterResponseDto> register(
+            @RequestBody @Valid CredentialsRequestDto request
+    ) {
+        UserDataForRegister userData = authenticationService.register(
+                credentialsMapper.toDomain(request)
+        );
 
         return ResponseEntity.status(HttpStatus.CREATED).body(userMapper.toDto(userData));
     }
 
 
     @PostMapping(Endpoints.GET_TOKEN)
-    public ResponseEntity<TokenResponseDto> token(@RequestBody @Valid CredentialsRequestDto request) {
+    public ResponseEntity<TokenResponseDto> token(
+            @RequestBody @Valid CredentialsRequestDto request
+    ) {
         Token token = authenticationService.issueToken(credentialsMapper.toDomain(request));
 
         return ResponseEntity.ok(tokenMapper.toDto(token));

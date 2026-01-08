@@ -1,6 +1,13 @@
 package ru.sf.personalfinancemanagementsystem.configurations;
 
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.jwk.JWKSet;
+import com.nimbusds.jose.jwk.KeyUse;
+import com.nimbusds.jose.jwk.OctetSequenceKey;
+import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
+import com.nimbusds.jose.jwk.source.JWKSource;
+import com.nimbusds.jose.proc.SecurityContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
@@ -15,7 +22,7 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import ru.sf.personalfinancemanagementsystem.constants.Endpoints;
-import ru.sf.personalfinancemanagementsystem.constants.YamlPaths;
+import ru.sf.personalfinancemanagementsystem.exceptions.SecretSizeException;
 import ru.sf.personalfinancemanagementsystem.services.YamlService;
 
 import javax.crypto.SecretKey;
@@ -35,18 +42,22 @@ public class SecurityConfiguration {
     @Bean
     public SecretKey jwtSecretKey(YamlService yamlService) {
         byte[] bytes = yamlService.getSecret().getBytes(StandardCharsets.UTF_8);
-        if (bytes.length < 32) {
-            throw new IllegalStateException(YamlPaths.SECRET + " должен быть минимум 32 байта для HS256");
+        if (bytes.length < yamlService.getMinByteSize()) {
+            throw new SecretSizeException();
         }
-        return new SecretKeySpec(bytes, "HmacSHA256");
+        return new SecretKeySpec(bytes, yamlService.getAlgorithmName());
     }
 
 
     @Bean
     public JwtEncoder jwtEncoder(SecretKey secretKey) {
-        return new NimbusJwtEncoder(
-                new ImmutableSecret<>(secretKey)
-        );
+        OctetSequenceKey jwk = new OctetSequenceKey.Builder(secretKey)
+                .algorithm(JWSAlgorithm.HS256)
+                .keyUse(KeyUse.SIGNATURE)
+                .build();
+
+        JWKSource<SecurityContext> jwkSource = new ImmutableJWKSet<>(new JWKSet(jwk));
+        return new NimbusJwtEncoder(jwkSource);
     }
 
 
@@ -66,8 +77,9 @@ public class SecurityConfiguration {
                         .requestMatchers(
                                 Endpoints.REGISTER,
                                 Endpoints.GET_TOKEN,
-                                Endpoints.OPEN_API_HTML,
-                                Endpoints.OPEN_API_ALL
+                                Endpoints.SWAGGER_UI_HTML,
+                                Endpoints.SWAGGER_UI_ALL,
+                                Endpoints.ERROR
                         )
                         .permitAll()
                         .anyRequest().authenticated()

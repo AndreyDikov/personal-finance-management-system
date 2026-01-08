@@ -12,6 +12,7 @@ import ru.sf.personalfinancemanagementsystem.domains.*;
 import ru.sf.personalfinancemanagementsystem.entities.UserEntity;
 import ru.sf.personalfinancemanagementsystem.exceptions.BadLoginOrPasswordException;
 import ru.sf.personalfinancemanagementsystem.exceptions.UserAlreadyExistsException;
+import ru.sf.personalfinancemanagementsystem.exceptions.UserNotFoundException;
 import ru.sf.personalfinancemanagementsystem.mappers.UserMapper;
 import ru.sf.personalfinancemanagementsystem.repositories.UserRepository;
 import ru.sf.personalfinancemanagementsystem.services.AuthenticationService;
@@ -25,8 +26,9 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
     UserRepository userRepository;
 
-    PasswordEncoder passwordEncoder;
     JwtService jwtService;
+
+    PasswordEncoder passwordEncoder;
 
 
     @Override
@@ -38,7 +40,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                     .passwordHash(passwordEncoder.encode(credentials.getPassword()))
                     .build();
 
-            UserEntity savedUser = userRepository.save(user);
+            UserEntity savedUser = userRepository.saveAndFlush(user);
 
             return UserDataForRegister.builder()
                     .id(savedUser.getId())
@@ -54,7 +56,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     @Transactional(readOnly = true)
     public Token issueToken(@NotNull Credentials credentials) {
         User user = userRepository.findByLogin(credentials.getLogin())
-                .orElseThrow(BadLoginOrPasswordException::new);
+                .orElseThrow(UserNotFoundException::new);
 
         if (!passwordEncoder.matches(credentials.getPassword(), user.getPasswordHash())) {
             throw new BadLoginOrPasswordException();
