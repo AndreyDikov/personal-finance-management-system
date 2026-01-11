@@ -67,7 +67,8 @@ public class GlobalExceptionHandler {
             BadLoginOrPasswordException.class,
             UserAlreadyExistsException.class,
             BudgetForIncomeCategoryException.class,
-            CategoryAlreadyExistsException.class
+            CategoryAlreadyExistsException.class,
+            EditSomeoneCategoryException.class
     })
     public ErrorResponseDto handlePersonalFinanceManagementConflictExceptions(
             @NotNull RuntimeException exception
@@ -77,7 +78,10 @@ public class GlobalExceptionHandler {
 
 
     @ResponseStatus(HttpStatus.NOT_FOUND)
-    @ExceptionHandler(UserNotFoundException.class)
+    @ExceptionHandler({
+            UserNotFoundException.class,
+            CategoryNotFoundException.class
+    })
     public ErrorResponseDto handlePersonalFinanceManagementNotFoundExceptions(
             @NotNull RuntimeException exception
     ) {

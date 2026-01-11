@@ -12,10 +12,13 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ru.sf.personalfinancemanagementsystem.domains.CategoryDataForCreate;
+import ru.sf.personalfinancemanagementsystem.domains.CategoryDataForSetBudgetAmount;
 import ru.sf.personalfinancemanagementsystem.entities.CategoryEntity;
 import ru.sf.personalfinancemanagementsystem.enums.CategoryKind;
 import ru.sf.personalfinancemanagementsystem.exceptions.BudgetForIncomeCategoryException;
 import ru.sf.personalfinancemanagementsystem.exceptions.CategoryAlreadyExistsException;
+import ru.sf.personalfinancemanagementsystem.exceptions.CategoryNotFoundException;
+import ru.sf.personalfinancemanagementsystem.exceptions.EditSomeoneCategoryException;
 import ru.sf.personalfinancemanagementsystem.mappers.CategoryMapper;
 import ru.sf.personalfinancemanagementsystem.repositories.CategoryRepository;
 import ru.sf.personalfinancemanagementsystem.services.impl.CategoryServiceImpl;
@@ -32,7 +35,12 @@ import static org.mockito.Mockito.*;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 class CategoryServiceImplTest {
 
-    private static final UUID USER_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    private static final UUID USER_ID =
+            UUID.fromString("11111111-1111-1111-1111-111111111111");
+    private static final UUID OTHER_USER_ID =
+            UUID.fromString("99999999-9999-9999-9999-999999999999");
+    private static final UUID CATEGORY_ID =
+            UUID.fromString("22222222-2222-2222-2222-222222222222");
     private static final String CATEGORY_NAME = "Еда";
     private static final BigDecimal POSITIVE_BUDGET = new BigDecimal("100.00");
 
@@ -63,8 +71,8 @@ class CategoryServiceImplTest {
 
 
         @Test
-        @DisplayName("Если категория уже существует — кидает CategoryAlreadyExistsException и не сохраняет")
         @SuppressWarnings({"rawtypes", "unchecked"})
+        @DisplayName("Если категория уже существует — кидает CategoryAlreadyExistsException и не сохраняет")
         void shouldThrowAlreadyExistsWhenSameNameExists() {
             CategoryDataForCreate data = mock(CategoryDataForCreate.class);
             when(data.getKind()).thenReturn(CategoryKind.EXPENSE);
@@ -120,6 +128,113 @@ class CategoryServiceImplTest {
 
             verify(categoryMapper).toDomain(savedEntity);
             verifyNoMoreInteractions(categoryRepository, categoryMapper);
+        }
+
+    }
+
+
+    @Nested
+    @DisplayName("setBudgetAmount()")
+    class SetBudgetAmount {
+
+        @Test
+        @DisplayName("Если категория не найдена — кидает CategoryNotFoundException и не делает update")
+        void shouldThrowCategoryNotFoundWhenCategoryMissing() {
+            CategoryDataForSetBudgetAmount data = mock(CategoryDataForSetBudgetAmount.class);
+            when(data.getCategoryId()).thenReturn(CATEGORY_ID);
+
+            when(categoryRepository.findById(CATEGORY_ID)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.setBudgetAmount(USER_ID, data))
+                    .isInstanceOf(CategoryNotFoundException.class);
+
+            verify(categoryRepository).findById(CATEGORY_ID);
+            verify(categoryRepository, never()).setBudgetAmount(any(UUID.class), any());
+            verifyNoInteractions(categoryMapper);
+        }
+
+
+        @Test
+        @DisplayName("Если пытаются редактировать чужую категорию — кидает EditSomeoneCategoryException и не делает update")
+        void shouldThrowEditSomeoneCategoryWhenUserMismatch() {
+            CategoryDataForSetBudgetAmount data = mock(CategoryDataForSetBudgetAmount.class);
+            when(data.getCategoryId()).thenReturn(CATEGORY_ID);
+
+            CategoryEntity entity = mock(CategoryEntity.class);
+            when(entity.getUserId()).thenReturn(OTHER_USER_ID);
+
+            when(categoryRepository.findById(CATEGORY_ID)).thenReturn(Optional.of(entity));
+
+            assertThatThrownBy(() -> service.setBudgetAmount(USER_ID, data))
+                    .isInstanceOf(EditSomeoneCategoryException.class);
+
+            verify(categoryRepository).findById(CATEGORY_ID);
+            verify(categoryRepository, never()).setBudgetAmount(any(UUID.class), any());
+            verifyNoInteractions(categoryMapper);
+        }
+
+
+        @Test
+        @DisplayName("Если kind=INCOME и budgetAmount != null — кидает BudgetForIncomeCategoryException и не делает update")
+        void shouldThrowBudgetForIncomeWhenBudgetProvided() {
+            CategoryDataForSetBudgetAmount data = mock(CategoryDataForSetBudgetAmount.class);
+            when(data.getCategoryId()).thenReturn(CATEGORY_ID);
+            when(data.getBudgetAmount()).thenReturn(POSITIVE_BUDGET);
+
+            CategoryEntity entity = mock(CategoryEntity.class);
+            when(entity.getUserId()).thenReturn(USER_ID);
+            when(entity.getKind()).thenReturn(CategoryKind.INCOME);
+
+            when(categoryRepository.findById(CATEGORY_ID)).thenReturn(Optional.of(entity));
+
+            assertThatThrownBy(() -> service.setBudgetAmount(USER_ID, data))
+                    .isInstanceOf(BudgetForIncomeCategoryException.class);
+
+            verify(categoryRepository).findById(CATEGORY_ID);
+            verify(categoryRepository, never()).setBudgetAmount(any(UUID.class), any());
+            verifyNoInteractions(categoryMapper);
+        }
+
+
+        @Test
+        @DisplayName("Если всё ок (EXPENSE) — вызывает repository.setBudgetAmount с нужными параметрами")
+        void shouldUpdateBudgetForExpense() {
+            CategoryDataForSetBudgetAmount data = mock(CategoryDataForSetBudgetAmount.class);
+            when(data.getCategoryId()).thenReturn(CATEGORY_ID);
+            when(data.getBudgetAmount()).thenReturn(POSITIVE_BUDGET);
+
+            CategoryEntity entity = mock(CategoryEntity.class);
+            when(entity.getUserId()).thenReturn(USER_ID);
+            when(entity.getKind()).thenReturn(CategoryKind.EXPENSE);
+
+            when(categoryRepository.findById(CATEGORY_ID)).thenReturn(Optional.of(entity));
+
+            service.setBudgetAmount(USER_ID, data);
+
+            verify(categoryRepository).findById(CATEGORY_ID);
+            verify(categoryRepository).setBudgetAmount(CATEGORY_ID, POSITIVE_BUDGET);
+            verifyNoInteractions(categoryMapper);
+        }
+
+
+        @Test
+        @DisplayName("Если всё ок (INCOME и budgetAmount = null) — вызывает repository.setBudgetAmount с null")
+        void shouldUpdateBudgetForIncomeWhenNullBudget() {
+            CategoryDataForSetBudgetAmount data = mock(CategoryDataForSetBudgetAmount.class);
+            when(data.getCategoryId()).thenReturn(CATEGORY_ID);
+            when(data.getBudgetAmount()).thenReturn(null);
+
+            CategoryEntity entity = mock(CategoryEntity.class);
+            when(entity.getUserId()).thenReturn(USER_ID);
+            when(entity.getKind()).thenReturn(CategoryKind.INCOME);
+
+            when(categoryRepository.findById(CATEGORY_ID)).thenReturn(Optional.of(entity));
+
+            service.setBudgetAmount(USER_ID, data);
+
+            verify(categoryRepository).findById(CATEGORY_ID);
+            verify(categoryRepository).setBudgetAmount(CATEGORY_ID, null);
+            verifyNoInteractions(categoryMapper);
         }
 
     }

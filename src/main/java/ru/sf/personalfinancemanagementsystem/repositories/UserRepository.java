@@ -14,12 +14,12 @@ import java.util.UUID;
 public interface UserRepository extends JpaRepository<UserEntity, UUID> {
 
     @Query(value = """
-        select id
-             , login
-             , password_hash
-        from users
-        where login = :login
-    """, nativeQuery = true)
+                select id
+                     , login
+                     , password_hash
+                from users
+                where login = :login
+            """, nativeQuery = true)
     Optional<UserEntity> findByLogin(String login);
 
 }

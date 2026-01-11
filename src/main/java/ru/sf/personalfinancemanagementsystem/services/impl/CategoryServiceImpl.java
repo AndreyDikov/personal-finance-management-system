@@ -5,12 +5,16 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import ru.sf.personalfinancemanagementsystem.domains.Category;
 import ru.sf.personalfinancemanagementsystem.domains.CategoryDataForCreate;
+import ru.sf.personalfinancemanagementsystem.domains.CategoryDataForSetBudgetAmount;
 import ru.sf.personalfinancemanagementsystem.entities.CategoryEntity;
 import ru.sf.personalfinancemanagementsystem.enums.CategoryKind;
 import ru.sf.personalfinancemanagementsystem.exceptions.BudgetForIncomeCategoryException;
 import ru.sf.personalfinancemanagementsystem.exceptions.CategoryAlreadyExistsException;
+import ru.sf.personalfinancemanagementsystem.exceptions.CategoryNotFoundException;
+import ru.sf.personalfinancemanagementsystem.exceptions.EditSomeoneCategoryException;
 import ru.sf.personalfinancemanagementsystem.mappers.CategoryMapper;
 import ru.sf.personalfinancemanagementsystem.repositories.CategoryRepository;
 import ru.sf.personalfinancemanagementsystem.services.CategoryService;
@@ -30,6 +34,7 @@ public class CategoryServiceImpl implements CategoryService {
 
 
     @Override
+    @Transactional
     public Category createCategory(
             UUID userId,
             @NonNull CategoryDataForCreate data
@@ -52,6 +57,29 @@ public class CategoryServiceImpl implements CategoryService {
         CategoryEntity savedCategoryEntity = categoryRepository.save(entity);
 
         return categoryMapper.toDomain(savedCategoryEntity);
+    }
+
+
+    @Override
+    @Transactional
+    public void setBudgetAmount(
+            @NonNull UUID userId,
+            @NonNull CategoryDataForSetBudgetAmount data
+    ) {
+        CategoryEntity entity = categoryRepository.findById(data.getCategoryId())
+                .orElseThrow(CategoryNotFoundException::new);
+
+        Checks.begin()
+                .check(!userId.equals(entity.getUserId()),
+                        EditSomeoneCategoryException::new)
+                .check(entity.getKind().equals(CategoryKind.INCOME)
+                                && data.getBudgetAmount() != null,
+                        BudgetForIncomeCategoryException::new);
+
+        categoryRepository.setBudgetAmount(
+                data.getCategoryId(),
+                data.getBudgetAmount()
+        );
     }
 
 }
