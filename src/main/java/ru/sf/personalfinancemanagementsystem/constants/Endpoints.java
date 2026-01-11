@@ -22,4 +22,7 @@ public class Endpoints {
     public static final String CREATE_CATEGORY = CATEGORIES + "/create";
     public static final String SET_BUDGET_AMOUNT = CATEGORIES + "/set-budget-amount";
 
+    public static final String OPERATIONS = BASE + "/operations";
+    public static final String CREATE_OPERATION = OPERATIONS + "/create";
+
 }

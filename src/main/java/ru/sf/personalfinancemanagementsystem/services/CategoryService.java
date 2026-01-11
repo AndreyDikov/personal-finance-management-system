@@ -6,6 +6,7 @@ import ru.sf.personalfinancemanagementsystem.domains.CategoryDataForSetBudgetAmo
 
 import java.util.UUID;
 
+
 public interface CategoryService {
 
     Category createCategory(UUID userId, CategoryDataForCreate data);
