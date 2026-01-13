@@ -11,9 +11,12 @@ import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import ru.sf.personalfinancemanagementsystem.domains.CategoriesReport;
 import ru.sf.personalfinancemanagementsystem.domains.CategoryDataForCreate;
 import ru.sf.personalfinancemanagementsystem.domains.CategoryDataForSetBudgetAmount;
 import ru.sf.personalfinancemanagementsystem.entities.CategoryEntity;
+import ru.sf.personalfinancemanagementsystem.entities.rows.ExpenseCategoryRow;
+import ru.sf.personalfinancemanagementsystem.entities.rows.IncomeCategoryRow;
 import ru.sf.personalfinancemanagementsystem.enums.CategoryKind;
 import ru.sf.personalfinancemanagementsystem.exceptions.BudgetForIncomeCategoryException;
 import ru.sf.personalfinancemanagementsystem.exceptions.CategoryAlreadyExistsException;
@@ -23,11 +26,10 @@ import ru.sf.personalfinancemanagementsystem.mappers.CategoryMapper;
 import ru.sf.personalfinancemanagementsystem.repositories.CategoryRepository;
 import ru.sf.personalfinancemanagementsystem.services.impl.CategoryServiceImpl;
 import java.math.BigDecimal;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.mockito.Mockito.*;
 
 
@@ -235,6 +237,97 @@ class CategoryServiceImplTest {
             verify(categoryRepository).findById(CATEGORY_ID);
             verify(categoryRepository).setBudgetAmount(CATEGORY_ID, null);
             verifyNoInteractions(categoryMapper);
+        }
+
+    }
+
+
+    @Nested
+    @DisplayName("getCategoriesReport()")
+    class GetCategoriesReport {
+
+        private static final UUID USER_ID =
+                UUID.fromString("11111111-1111-1111-1111-111111111111");
+        private static final UUID CAT_1 =
+                UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        private static final UUID CAT_2 =
+                UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
+
+
+        @Test
+        @DisplayName("Если хотя бы одной категории нет — кидает CategoryNotFoundException и не строит отчет")
+        void shouldThrowCategoryNotFound() {
+            Set<UUID> ids = Set.of(CAT_1, CAT_2);
+
+            when(categoryRepository.findExistingIds(ids)).thenReturn(Set.of(CAT_1));
+
+            assertThatThrownBy(() -> service.getCategoriesReport(USER_ID, ids))
+                    .isInstanceOf(CategoryNotFoundException.class);
+
+            verify(categoryRepository).findExistingIds(ids);
+            verify(categoryRepository, never()).findOwnedIds(any(), any());
+
+            verify(categoryRepository, never()).incomeByCategories(any(), any());
+            verify(categoryRepository, never()).expenseCategoriesRemaining(any(), any());
+            verifyNoInteractions(categoryMapper);
+        }
+
+
+        @Test
+        @DisplayName("Если хотя бы одна категория не принадлежит пользователю — кидает EditSomeoneCategoryException")
+        void shouldThrowEditSomeoneCategory() {
+            Set<UUID> ids = Set.of(CAT_1, CAT_2);
+
+            when(categoryRepository.findExistingIds(ids)).thenReturn(Set.of(CAT_1, CAT_2));
+            when(categoryRepository.findOwnedIds(USER_ID, ids)).thenReturn(Set.of(CAT_1));
+
+            assertThatThrownBy(() -> service.getCategoriesReport(USER_ID, ids))
+                    .isInstanceOf(EditSomeoneCategoryException.class);
+
+            verify(categoryRepository).findExistingIds(ids);
+            verify(categoryRepository).findOwnedIds(USER_ID, ids);
+
+            verify(categoryRepository, never()).incomeByCategories(any(), any());
+            verify(categoryRepository, never()).expenseCategoriesRemaining(any(), any());
+            verifyNoInteractions(categoryMapper);
+        }
+
+
+        @Test
+        @DisplayName("Если все категории существуют и принадлежат пользователю — возвращает отчет и вызывает мапперы")
+        void shouldReturnReport() {
+            Set<UUID> ids = Set.of(CAT_1, CAT_2);
+
+            when(categoryRepository.findExistingIds(ids)).thenReturn(Set.of(CAT_1, CAT_2));
+            when(categoryRepository.findOwnedIds(USER_ID, ids)).thenReturn(Set.of(CAT_1, CAT_2));
+
+            IncomeCategoryRow incomeRow = mock(IncomeCategoryRow.class);
+            ExpenseCategoryRow expenseRow = mock(ExpenseCategoryRow.class);
+
+            var incomeRows = List.of(incomeRow);
+            var expenseRows = List.of(expenseRow);
+
+            when(categoryRepository.incomeByCategories(USER_ID, ids)).thenReturn(incomeRows);
+            when(categoryRepository.expenseCategoriesRemaining(USER_ID, ids)).thenReturn(expenseRows);
+
+            when(categoryMapper.toIncDomains(incomeRows)).thenReturn(Collections.emptyList());
+            when(categoryMapper.toExpDomains(expenseRows)).thenReturn(Collections.emptyList());
+
+            CategoriesReport report = service.getCategoriesReport(USER_ID, ids);
+
+            assertThat(report).isNotNull();
+            assertThat(report.getIncomeCategories()).isEmpty();
+            assertThat(report.getExpenseCategories()).isEmpty();
+
+            var inOrder = inOrder(categoryRepository, categoryMapper);
+            inOrder.verify(categoryRepository).findExistingIds(ids);
+            inOrder.verify(categoryRepository).findOwnedIds(USER_ID, ids);
+            inOrder.verify(categoryRepository).incomeByCategories(USER_ID, ids);
+            inOrder.verify(categoryRepository).expenseCategoriesRemaining(USER_ID, ids);
+            inOrder.verify(categoryMapper).toIncDomains(incomeRows);
+            inOrder.verify(categoryMapper).toExpDomains(expenseRows);
+
+            verifyNoMoreInteractions(categoryRepository, categoryMapper);
         }
 
     }
