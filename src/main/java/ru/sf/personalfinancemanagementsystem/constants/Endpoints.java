@@ -10,13 +10,17 @@ public class Endpoints {
 
     public static final String ERROR = "/error";
 
+    public static final String ALL = "/**";
+
     public static final String AUTHENTICATION = BASE + "/authentication";
     public static final String REGISTER = AUTHENTICATION + "/register";
     public static final String GET_TOKEN = AUTHENTICATION + "/get-token";
 
     public static final String SWAGGER_UI = "/swagger-ui";
     public static final String SWAGGER_UI_HTML = SWAGGER_UI + ".html";
-    public static final String SWAGGER_UI_ALL = SWAGGER_UI + "/**";
+    public static final String SWAGGER_UI_ALL = SWAGGER_UI + ALL;
+    public static final String OPEN_API_YAML = "/openapi.yaml";
+    public static final String V3_API_DOCS_ALL = "/v3/api-docs" + ALL;
 
     public static final String CATEGORIES = BASE + "/categories";
     public static final String CREATE_CATEGORY = CATEGORIES + "/create";

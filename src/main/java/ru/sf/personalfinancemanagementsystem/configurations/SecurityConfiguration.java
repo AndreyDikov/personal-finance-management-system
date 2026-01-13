@@ -79,6 +79,8 @@ public class SecurityConfiguration {
                                 Endpoints.GET_TOKEN,
                                 Endpoints.SWAGGER_UI_HTML,
                                 Endpoints.SWAGGER_UI_ALL,
+                                Endpoints.OPEN_API_YAML,
+                                Endpoints.V3_API_DOCS_ALL,
                                 Endpoints.ERROR
                         )
                         .permitAll()
