@@ -8,19 +8,24 @@ import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.sf.personalfinancemanagementsystem.constants.ResponseMessages;
+import ru.sf.personalfinancemanagementsystem.domains.GeneralReport;
 import ru.sf.personalfinancemanagementsystem.domains.OperationDataForCreate;
 import ru.sf.personalfinancemanagementsystem.domains.SavedOperation;
 import ru.sf.personalfinancemanagementsystem.entities.CategoryEntity;
 import ru.sf.personalfinancemanagementsystem.entities.OperationEntity;
+import ru.sf.personalfinancemanagementsystem.entities.rows.ExpenseCategoryRow;
+import ru.sf.personalfinancemanagementsystem.entities.rows.IncomeCategoryRow;
 import ru.sf.personalfinancemanagementsystem.enums.CategoryKind;
 import ru.sf.personalfinancemanagementsystem.exceptions.CategoryNotFoundException;
 import ru.sf.personalfinancemanagementsystem.exceptions.EditSomeoneCategoryException;
+import ru.sf.personalfinancemanagementsystem.mappers.CategoryMapper;
 import ru.sf.personalfinancemanagementsystem.mappers.OperationMapper;
 import ru.sf.personalfinancemanagementsystem.repositories.CategoryRepository;
 import ru.sf.personalfinancemanagementsystem.repositories.OperationRepository;
 import ru.sf.personalfinancemanagementsystem.services.OperationService;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 
@@ -33,6 +38,7 @@ public class OperationServiceImpl implements OperationService {
     CategoryRepository categoryRepository;
 
     OperationMapper operationMapper;
+    CategoryMapper categoryMapper;
 
     EntityManager entityManager;
 
@@ -103,6 +109,30 @@ public class OperationServiceImpl implements OperationService {
         }
 
         return result;
+    }
+
+
+    @Override
+    @Transactional(readOnly = true)
+    public GeneralReport getGeneralReport(UUID userId) {
+        BigDecimal totalIncome = operationRepository.totalIncome(userId);
+        List<IncomeCategoryRow> incomeByCategories = categoryRepository
+                .incomeByCategories(userId);
+
+        BigDecimal totalExpense = operationRepository.totalExpense(userId);
+        List<ExpenseCategoryRow> expenseCategoriesRemaining = categoryRepository
+                .expenseCategoriesRemaining(userId);
+
+        return GeneralReport.builder()
+                .generalIncome(totalIncome)
+                .incomeCategoriesReports(
+                        categoryMapper.toIncDomains(incomeByCategories)
+                )
+                .generalExpense(totalExpense)
+                .expenseCategoriesReports(
+                        categoryMapper.toExpDomains(expenseCategoriesRemaining)
+                )
+                .build();
     }
 
 }

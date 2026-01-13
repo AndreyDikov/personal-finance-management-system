@@ -24,5 +24,6 @@ public class Endpoints {
 
     public static final String OPERATIONS = BASE + "/operations";
     public static final String CREATE_OPERATION = OPERATIONS + "/create";
+    public static final String VIEW_GENERAL_REPORT = OPERATIONS + "/view-general-report";
 
 }

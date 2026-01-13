@@ -13,19 +13,25 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ru.sf.personalfinancemanagementsystem.constants.ResponseMessages;
+import ru.sf.personalfinancemanagementsystem.domains.GeneralReport;
 import ru.sf.personalfinancemanagementsystem.domains.OperationDataForCreate;
 import ru.sf.personalfinancemanagementsystem.domains.SavedOperation;
 import ru.sf.personalfinancemanagementsystem.entities.CategoryEntity;
 import ru.sf.personalfinancemanagementsystem.entities.OperationEntity;
+import ru.sf.personalfinancemanagementsystem.entities.rows.ExpenseCategoryRow;
+import ru.sf.personalfinancemanagementsystem.entities.rows.IncomeCategoryRow;
 import ru.sf.personalfinancemanagementsystem.enums.CategoryKind;
 import ru.sf.personalfinancemanagementsystem.exceptions.CategoryNotFoundException;
 import ru.sf.personalfinancemanagementsystem.exceptions.EditSomeoneCategoryException;
+import ru.sf.personalfinancemanagementsystem.mappers.CategoryMapper;
 import ru.sf.personalfinancemanagementsystem.mappers.OperationMapper;
 import ru.sf.personalfinancemanagementsystem.repositories.CategoryRepository;
 import ru.sf.personalfinancemanagementsystem.repositories.OperationRepository;
 import ru.sf.personalfinancemanagementsystem.services.impl.OperationServiceImpl;
 
 import java.math.BigDecimal;
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -53,6 +59,7 @@ class OperationServiceImplTest {
     @Mock CategoryRepository categoryRepository;
     @Mock OperationMapper operationMapper;
     @Mock EntityManager entityManager;
+    @Mock CategoryMapper categoryMapper;
 
     @InjectMocks OperationServiceImpl service;
 
@@ -374,6 +381,89 @@ class OperationServiceImplTest {
 
             verify(operationRepository).sumUserBalance(USER_ID);
             verify(operationRepository).sumByUserAndCategory(USER_ID, CATEGORY_ID);
+        }
+
+    }
+
+
+    @Nested
+    @DisplayName("getGeneralReport()")
+    class GetGeneralReport {
+
+        private static final BigDecimal TOTAL_INCOME = new BigDecimal("1000.00");
+        private static final BigDecimal TOTAL_EXPENSE = new BigDecimal("400.00");
+
+
+        @Test
+        @DisplayName("Должен собрать общий отчет: доход/расход + списки по категориям через маппер")
+        void shouldBuildGeneralReport() {
+            when(operationRepository.totalIncome(USER_ID)).thenReturn(TOTAL_INCOME);
+            when(operationRepository.totalExpense(USER_ID)).thenReturn(TOTAL_EXPENSE);
+
+            IncomeCategoryRow incomeRow = mock(IncomeCategoryRow.class);
+            ExpenseCategoryRow expenseRow = mock(ExpenseCategoryRow.class);
+
+            var incomeRows = List.of(incomeRow);
+            var expenseRows = List.of(expenseRow);
+
+            when(categoryRepository.incomeByCategories(USER_ID)).thenReturn(incomeRows);
+            when(categoryRepository.expenseCategoriesRemaining(USER_ID)).thenReturn(expenseRows);
+
+            when(categoryMapper.toIncDomains(incomeRows)).thenReturn(Collections.emptyList());
+            when(categoryMapper.toExpDomains(expenseRows)).thenReturn(Collections.emptyList());
+
+            GeneralReport report = service.getGeneralReport(USER_ID);
+
+            assertThat(report).isNotNull();
+            assertThat(report.getGeneralIncome()).isEqualByComparingTo(TOTAL_INCOME);
+            assertThat(report.getGeneralExpense()).isEqualByComparingTo(TOTAL_EXPENSE);
+            assertThat(report.getIncomeCategoriesReports()).isEmpty();
+            assertThat(report.getExpenseCategoriesReports()).isEmpty();
+
+            var inOrder = inOrder(operationRepository, categoryRepository, categoryMapper);
+            inOrder.verify(operationRepository).totalIncome(USER_ID);
+            inOrder.verify(categoryRepository).incomeByCategories(USER_ID);
+            inOrder.verify(operationRepository).totalExpense(USER_ID);
+            inOrder.verify(categoryRepository).expenseCategoriesRemaining(USER_ID);
+            inOrder.verify(categoryMapper).toIncDomains(incomeRows);
+            inOrder.verify(categoryMapper).toExpDomains(expenseRows);
+
+            verifyNoMoreInteractions(operationRepository, categoryRepository, categoryMapper);
+            verifyNoInteractions(entityManager, operationMapper);
+        }
+
+
+        @Test
+        @DisplayName("Если репозитории вернули пустые списки — отчет собирается корректно")
+        void shouldBuildGeneralReportWithEmptyLists() {
+            when(operationRepository.totalIncome(USER_ID)).thenReturn(BigDecimal.ZERO);
+            when(operationRepository.totalExpense(USER_ID)).thenReturn(BigDecimal.ZERO);
+
+            var incomeRows = Collections.<IncomeCategoryRow>emptyList();
+            var expenseRows = Collections.<ExpenseCategoryRow>emptyList();
+
+            when(categoryRepository.incomeByCategories(USER_ID)).thenReturn(incomeRows);
+            when(categoryRepository.expenseCategoriesRemaining(USER_ID)).thenReturn(expenseRows);
+
+            when(categoryMapper.toIncDomains(incomeRows)).thenReturn(Collections.emptyList());
+            when(categoryMapper.toExpDomains(expenseRows)).thenReturn(Collections.emptyList());
+
+            GeneralReport report = service.getGeneralReport(USER_ID);
+
+            assertThat(report.getGeneralIncome()).isEqualByComparingTo(BigDecimal.ZERO);
+            assertThat(report.getGeneralExpense()).isEqualByComparingTo(BigDecimal.ZERO);
+            assertThat(report.getIncomeCategoriesReports()).isEmpty();
+            assertThat(report.getExpenseCategoriesReports()).isEmpty();
+
+            verify(operationRepository).totalIncome(USER_ID);
+            verify(operationRepository).totalExpense(USER_ID);
+            verify(categoryRepository).incomeByCategories(USER_ID);
+            verify(categoryRepository).expenseCategoriesRemaining(USER_ID);
+            verify(categoryMapper).toIncDomains(incomeRows);
+            verify(categoryMapper).toExpDomains(expenseRows);
+
+            verifyNoMoreInteractions(operationRepository, categoryRepository, categoryMapper);
+            verifyNoInteractions(entityManager, operationMapper);
         }
 
     }
